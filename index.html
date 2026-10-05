@@ -777,7 +777,21 @@ if(API){
   if(token)loadData(false);
 }
 if(role&&installEligible())S.install=true;
-let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(isDesk()!==/\bdesk\b/.test($('#app').className))render(0)},120)});
+/* iPhone home-screen apps can report a viewport shorter than the screen (the status-bar height); stretch the app to the real screen */
+const probe=document.createElement('div');probe.style.cssText='position:fixed;left:0;top:0;width:0;height:100vh;visibility:hidden;pointer-events:none';document.body.appendChild(probe);
+function fitScreen(){
+  const b=document.body,ih=window.innerHeight,vh=probe.offsetHeight;
+  const sa=(navigator.standalone===true)||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+  const land=innerWidth>ih,sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
+  let full=Math.max(ih,vh);if(sa&&sh-full>=0&&sh-full<=100)full=sh;
+  if(sa&&full-ih>=20&&full-ih<=100){b.style.bottom='auto';b.style.height=full+'px'}else{b.style.bottom='';b.style.height=''}
+  return {ih,vh,sh,full,sa};
+}
+function fitSoon(){fitScreen();setTimeout(fitScreen,300);setTimeout(fitScreen,1200)}
+let rz;addEventListener('resize',()=>{fitScreen();clearTimeout(rz);rz=setTimeout(()=>{if(isDesk()!==/\bdesk\b/.test($('#app').className))render(0)},120)});
+addEventListener('orientationchange',fitSoon);addEventListener('pageshow',fitSoon);
+let dbgN=0,dbgT=0;document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.copy')){if(Date.now()-dbgT>2500)dbgN=0;dbgT=Date.now();if(++dbgN>=5){dbgN=0;const r=fitScreen();toast('inner '+r.ih+' · 100vh '+r.vh+' · screen '+r.sh+' · app '+(r.sa?'yes':'no'))}}});
+fitSoon();
 render(0);
 </script>
 

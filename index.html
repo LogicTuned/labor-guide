@@ -118,7 +118,7 @@ body.deskmode .toast{bottom:30px}
 .bl{padding-left:19px}.bl li{margin:5px 0;font-size:14.5px;line-height:1.45;overflow-wrap:anywhere}.bl li::marker{color:var(--amber)}
 .isteps{margin:0 0 14px 20px;font-size:14.5px;line-height:1.5;color:var(--ink)}.isteps li{margin:6px 0}.sheet .lg{width:46px;height:46px;flex:none;border-radius:11px;box-shadow:0 0 0 1px var(--line)}
 .sz{display:block;font-size:10.5px;font-weight:800;letter-spacing:.06em;margin-bottom:3px}
-.sz.big{color:#c0392b}.sz.sm2{color:var(--faint)}
+.sz.big{color:#c0392b}.sz.road{color:#b45309}.sz.sm2{color:var(--faint)}
 .chev{font-size:22px;color:var(--faint)}
 .add{width:38px;height:38px;border-radius:50%;background:var(--chip);color:var(--link);font-size:23px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
 .add.in{background:var(--amber);color:#fff;font-size:18px}
@@ -236,7 +236,8 @@ const ICONS={'Engine':'⚙️','Hydraulics':'💧','Transmission / Drivetrain':'
 const shortSys=s=>String(s||'').replace(/\s*\(.*\)\s*/,'').replace('Mast / Lift Assembly','Mast / Lift');
 const jobById=id=>jobs.find(j=>j.id===id), consById=id=>cons.find(c=>c.id===id);
 const isBig=j=>!!j.big;
-const szTag=j=>isBig(j)?'<span class="sz big">BIG TRUCK</span>':'<span class="sz sm2">SMALL TRUCK</span>';
+const inMode=(j,m)=>m==='road'?!!j.road:(!j.road&&isBig(j)===(m==='big'));
+const szTag=j=>(j.road?'<span class="sz road">ROAD</span> ':'')+(isBig(j)?'<span class="sz big">BIG TRUCK</span>':'<span class="sz sm2">SMALL TRUCK</span>');
 const scr=()=>{const m=document.querySelector('main');return m?m.scrollTop:0};
 const isDesk=()=>window.innerWidth>=1180&&!!role;
 const selC=id=>(isDesk()&&(S.d.job===id||S.d.cit===id))?' sel':'';
@@ -291,9 +292,9 @@ function consSearch(q){const t=q.trim().toLowerCase(),n=norm(q);if(!t)return con
 function homeBody(){
   if(API&&!jobs.length)return S.err?'<div class="empty"><big>📡</big><b>Could not load jobs</b>Check your connection.<br><br><button class="btn p" data-act="refresh">Try again</button></div>':'<div class="empty"><big>⏳</big><b>'+(S.loaded?'No jobs yet':'Loading jobs…')+'</b></div>';
   if(isDesk())return deskJobsBody();
-  const big=S.mode==='big',pool=jobs.filter(j=>isBig(j)===big);
+  const big=S.mode==='big',pool=jobs.filter(j=>inMode(j,S.mode));
   if(big&&!pool.length&&!S.q.trim())return '<div class="empty"><big>🚛</big><b>Big truck jobs are coming soon</b>Big truck labor times will have their own section here.</div>';
-  if(S.mode==='road')return '<div class="empty"><big>🚐</big><b>Road repair times are coming</b>Shop repair jobs are ready now. Road repairs will use this same layout.</div>';
+  if(S.mode==='road'&&!pool.length&&!S.q.trim())return '<div class="empty"><big>🚐</big><b>Road repair times are coming</b>Shop repair jobs are ready now. Road repairs will use this same layout.</div>';
   const q=S.q.trim();
   if(q){const r=jobSearch(q);return r.length?r.map(j=>jobRow(j,q,true)).join(''):'<div class="empty"><big>🔍</big><b>No jobs found</b>Try a different word from the job title.</div>'}
   const by={};pool.forEach(j=>{const k=shortSys(j.sys);by[k]=(by[k]||0)+1});
@@ -306,15 +307,15 @@ function homeBody(){
 }
 function vHome(){
   const right='<button class="so" data-act="signout">'+(isAdmin()?'Mgmt':'Tech')+' · Sign out</button>';
-  return topBar({title:'Repair Labor Guide',sub:jobs.filter(j=>!isBig(j)).length+' shop repair jobs'+(jobs.some(isBig)?' · '+jobs.filter(isBig).length+' big truck':''),right,search:{id:'q',ph:'Search job titles...',val:S.q},seg:true})+'<main><div id="hb">'+homeBody()+'</div><div class="copy">© 2026 Eric Schoen. All rights reserved.</div></main>'+navBar('home')+fab();
+  return topBar({title:'Repair Labor Guide',sub:jobs.filter(j=>inMode(j,'shop')).length+' shop repair jobs'+(jobs.some(j=>j.road)?' · '+jobs.filter(j=>j.road).length+' road':'')+(jobs.some(j=>inMode(j,'big'))?' · '+jobs.filter(j=>inMode(j,'big')).length+' big truck':''),right,search:{id:'q',ph:'Search job titles...',val:S.q},seg:true})+'<main><div id="hb">'+homeBody()+'</div><div class="copy">© 2026 Eric Schoen. All rights reserved.</div></main>'+navBar('home')+fab();
 }
 function sysBody(sys){
   const q=S.sq.trim().toLowerCase();
-  const big=S.mode==='big';const l=jobs.filter(j=>isBig(j)===big&&shortSys(j.sys)===sys&&(!q||j.name.toLowerCase().includes(q)));
+  const big=S.mode==='big';const l=jobs.filter(j=>inMode(j,S.mode)&&shortSys(j.sys)===sys&&(!q||j.name.toLowerCase().includes(q)));
   return l.length?l.map(j=>jobRow(j,q?S.sq.trim():'',false)).join(''):'<div class="empty"><big>🔍</big><b>No jobs found</b></div>';
 }
 function vSys(){
-  const sys=S.route.v,n=jobs.filter(j=>isBig(j)===(S.mode==='big')&&shortSys(j.sys)===sys).length;
+  const sys=S.route.v,n=jobs.filter(j=>inMode(j,S.mode)&&shortSys(j.sys)===sys).length;
   return topBar({back:'Home',title:esc(sys),sub:n+(n===1?' job':' jobs')+' · Shop',search:{id:'sq',ph:'Search in '+sys+'...',val:S.sq}})+'<main><div id="sb">'+sysBody(sys)+'</div></main>'+navBar('home')+fab();
 }
 function chkList(items){
@@ -323,7 +324,7 @@ function chkList(items){
 function bl(x){const l=String(x||'').split('\n').map(s=>s.trim()).filter(Boolean);return l.length>1?'<ul class="bl">'+l.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul>':'<p>'+esc(l[0]||'')+'</p>'}
 function jobCards(j){
   let h='<div class="stat"><b>'+esc(hrs(j))+'</b><span>labor'+(j.plus?' · may grow':'')+'</span></div>';
-  h+=isBig(j)?'<div class="bt">BIG TRUCK JOB</div>':'<div class="bt sm2">Small / regular truck job</div>';
+  h+=j.road?'<div class="bt'+(isBig(j)?'':' sm2')+'">ROAD REPAIR · '+(isBig(j)?'BIG TRUCK':'Small / regular truck')+'</div>':isBig(j)?'<div class="bt">BIG TRUCK JOB</div>':'<div class="bt sm2">Small / regular truck job</div>';
   if(j.rem)h+='<div class="adv"><h4>Reminders</h4>'+bl(j.rem)+'</div>';
   if(j.notes)h+='<div class="card"><h4>Labor notes</h4>'+bl(j.notes)+'</div>';
   if(j.mt)h+='<div class="card"><h4>Machine type</h4><p>'+esc(j.mt)+'</p></div>';
@@ -417,7 +418,7 @@ function jobFormInner(){
   '<div class="two">'+fld('min','Labor hours (min)',d.min,'number','inputmode="decimal" step="0.5" min="0"')+fld('max','Max hours <i>(optional)</i>',d.max,'number','inputmode="decimal" step="0.5" min="0" placeholder="leave blank"')+'</div>'+
   '<div class="f"><label for="notes">Labor notes <i>(one point per line)</i></label><textarea id="notes" data-f="notes">'+esc(d.notes)+'</textarea></div><div class="f"><label for="rem">Reminders / customer advisory <i>(optional, one point per line)</i></label><textarea id="rem" data-f="rem" placeholder="e.g. Advise the customer that...">'+esc(d.rem)+'</textarea></div>'+
   '<div class="f"><label>Parts to order</label>'+rowsHtml('parts',d.parts,'Part')+'</div><div class="f"><label>Supplies &amp; fluids</label>'+rowsHtml('sup',d.sup,'Supply or fluid')+'</div><div class="hint" style="text-align:left">Tip: add (recommended) or (possible) after a part and the app shows a tag next to it.</div>'+
-  '<div class="f"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="big" data-f="big" style="width:22px;height:22px" '+(d.big?'checked':'')+'>Big truck job (shows in Big Trucks only)</label></div><div class="f"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="plus" data-f="plus" style="width:22px;height:22px" '+(d.plus?'checked':'')+'>Hours are a starting point (show a + after the hours)</label></div>';
+  '<div class="f"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="road" data-f="road" style="width:22px;height:22px" '+(d.road?'checked':'')+'>Road repair (done at the customer\'s location)</label></div><div class="f"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="big" data-f="big" style="width:22px;height:22px" '+(d.big?'checked':'')+'>Big truck job (shop big truck jobs show in Big Trucks only)</label></div><div class="f"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="plus" data-f="plus" style="width:22px;height:22px" '+(d.plus?'checked':'')+'>Hours are a starting point (show a + after the hours)</label></div>';
   if(!isNew)h+=S.confirmDel?'<div class="btns"><button class="btn" data-act="canceldel">Keep job</button><button class="btn dz" data-act="deljob">Yes, delete it</button></div>':'<button class="btn dz" style="width:100%" data-act="askdel">Delete this job</button>';
   return h;
 }
@@ -473,14 +474,14 @@ const emptyBox=(ic,t,m)=>'<div class="empty"><big>'+ic+'</big><b>'+t+'</b>'+m+'<
 function deskJobsBody(){
   const q=S.q.trim();
   if(q){const r=jobSearch(q);return r.length?r.map(j=>jobRow(j,q,true)).join(''):emptyBox('🔍','No jobs found','Try a different word from the job title.')}
-  if(S.mode==='road')return emptyBox('🚐','Road repair times are coming','Shop repair jobs are ready now. Road repairs will use this same layout.');
-  const big=S.mode==='big';let pool=jobs.filter(j=>isBig(j)===big);
+  const big=S.mode==='big';let pool=jobs.filter(j=>inMode(j,S.mode));
+  if(S.mode==='road'&&!pool.length)return emptyBox('🚐','Road repair times are coming','Shop repair jobs are ready now. Road repairs will use this same layout.');
   if(big&&!pool.length)return emptyBox('🚛','Big truck jobs are coming soon','Big truck labor times will have their own section here.');
   if(S.d.sys)pool=pool.filter(j=>shortSys(j.sys)===S.d.sys);
   return pool.length?pool.map(j=>jobRow(j,'',true)).join(''):emptyBox('🔍','No jobs here yet','');
 }
 function sysSelect(){
-  const big=S.mode==='big',names=[...new Set(jobs.filter(j=>isBig(j)===big).map(j=>shortSys(j.sys)))].sort();
+  const big=S.mode==='big',names=[...new Set(jobs.filter(j=>inMode(j,S.mode)).map(j=>shortSys(j.sys)))].sort();
   return '<select id="dsys" aria-label="Filter by system"><option value="">All systems</option>'+names.map(n=>'<option'+(n===S.d.sys?' selected':'')+' value="'+esc(n)+'">'+esc(n)+'</option>').join('')+'</select>';
 }
 function favBody(){
@@ -525,9 +526,9 @@ function cartPanel(){
 }
 function vDesk(){
   const sec=secOf(),nb=(v,ic,label,c)=>'<button class="dnavb'+(sec===v?' a':'')+'" data-act="dnav" data-v="'+v+'"><i>'+ic+'</i>'+label+(c!=null?'<span class="c">'+c+'</span>':'')+'</button>';
-  const small=jobs.filter(j=>!isBig(j)).length,bigN=jobs.filter(isBig).length;
+  const small=jobs.filter(j=>inMode(j,'shop')).length,bigN=jobs.filter(j=>inMode(j,'big')).length,roadN=jobs.filter(j=>j.road).length;
   let h='<aside class="dside"><div class="brand">'+LOGO+'<div><b>Repair Labor Guide</b><small>Labor times &amp; parts</small></div></div>';
-  h+='<div class="dnl">Labor guide</div>'+nb('shop','🛠️','Shop Repairs',small)+nb('road','🚐','Road Repairs')+nb('big','🚛','Big Trucks',bigN||'soon');
+  h+='<div class="dnl">Labor guide</div>'+nb('shop','🛠️','Shop Repairs',small)+nb('road','🚐','Road Repairs',roadN||'soon')+nb('big','🚛','Big Trucks',bigN||'soon');
   h+='<div class="dnl">Parts &amp; supplies</div>'+nb('cons','🧴','Consumables',cons.length);
   h+='<div class="dnl">My lists</div>'+nb('favs','★','Favorites',favJ.length+favC.length);
   if(isAdmin())h+='<div class="dnl">Management</div>'+nb('admin','✎','Add / Edit Job')+nb('users','👤','Create / Edit Users');
@@ -590,8 +591,8 @@ function render(y){
 }
 /* ---------- actions ---------- */
 function tog(arr,id){const i=arr.indexOf(id);if(i>=0)arr.splice(i,1);else arr.push(id)}
-function blankJob(){return {name:'',sys:D.sys[0],mt:'All',min:'',max:'',notes:'',rem:'',big:false,plus:false,parts:[''],sup:['']}}
-function jobToForm(j){return {name:j.name,sys:j.sys,mt:j.mt||'All',min:j.min,max:j.max,notes:j.notes,rem:j.rem,big:!!j.big,plus:!!j.plus,parts:j.parts.length?j.parts.slice():[''],sup:j.sup.length?j.sup.slice():['']}}
+function blankJob(){return {name:'',sys:D.sys[0],mt:'All',min:'',max:'',notes:'',rem:'',big:false,road:false,plus:false,parts:[''],sup:['']}}
+function jobToForm(j){return {name:j.name,sys:j.sys,mt:j.mt||'All',min:j.min,max:j.max,notes:j.notes,rem:j.rem,big:!!j.big,road:!!j.road,plus:!!j.plus,parts:j.parts.length?j.parts.slice():[''],sup:j.sup.length?j.sup.slice():['']}}
 const lines=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
 function refreshDone(){}
 const A={
@@ -610,7 +611,7 @@ const A={
   allsys(){S.allSys=!S.allSys;$('#hb').innerHTML=homeBody()},
   cons(){S.cq='';if(isDesk()){S.stack=[];S.route={n:'cons'};render(0);return}go({n:'cons'})},
   job(el){const id=el.dataset.id;recent=[id].concat(recent.filter(x=>x!==id)).slice(0,6);sv('recent',recent);
-    if(isDesk()){const j=jobById(id);if(S.route.n!=='home'&&S.route.n!=='favs'){S.route={n:'home'};S.stack=[];S.mode=j&&isBig(j)?'big':'shop'}S.d.job=id;S.d.cit=null;render(0);return}
+    if(isDesk()){const j=jobById(id);if(S.route.n!=='home'&&S.route.n!=='favs'){S.route={n:'home'};S.stack=[];S.mode=j&&j.road?'road':j&&isBig(j)?'big':'shop'}S.d.job=id;S.d.cit=null;render(0);return}
     go({n:'job',id})},
   citem(el){if(isDesk()){S.d.cit=el.dataset.id;S.d.job=null;if(S.route.n!=='cons'&&S.route.n!=='favs'){S.route={n:'cons'};S.stack=[]}render(0);return}go({n:'citem',id:el.dataset.id})},
   dnav(el){const v=el.dataset.v;S.stack=[];S.confirmDel=false;S.confirmSave=false;S.d.job=null;S.d.cit=null;S.q='';S.d.sys='';if(v==='shop'||v==='road'||v==='big'){S.mode=v;S.route={n:'home'}}else S.route={n:v};render(0)},
@@ -636,7 +637,7 @@ const A={
   askdel(){S.confirmDel=true;render(scr())},
   canceldel(){S.confirmDel=false;S.confirmSave=false;render(scr())},
   savejob(){const f=S.form,d=f.d;if(!d.name.trim()){toast('Enter a job name');return}if(d.min===''||isNaN(+d.min)){toast('Enter the minimum labor hours');return}if(f.id&&!S.confirmSave){S.confirmSave=true;render(scr());return}S.confirmSave=false;if(!d.name.trim()||d.min===''||isNaN(+d.min)){toast('Name and minimum hours are needed');return}
-    const rec={name:d.name.trim(),sys:d.sys,mt:d.mt,min:+d.min,max:d.max===''||d.max==null||isNaN(+d.max)?'':+d.max,plus:!!d.plus,notes:d.notes.trim(),parts:d.parts.map(x=>x.trim()).filter(Boolean),sup:d.sup.map(x=>x.trim()).filter(Boolean),rem:d.rem.trim(),big:!!d.big};
+    const rec={name:d.name.trim(),sys:d.sys,mt:d.mt,min:+d.min,max:d.max===''||d.max==null||isNaN(+d.max)?'':+d.max,plus:!!d.plus,notes:d.notes.trim(),parts:d.parts.map(x=>x.trim()).filter(Boolean),sup:d.sup.map(x=>x.trim()).filter(Boolean),rem:d.rem.trim(),big:!!d.big,road:!!d.road};
     if(f.id){const j=jobById(f.id);Object.assign(j,rec)}else{let n=1+Math.max(0,...jobs.map(j=>parseInt(j.id.slice(2),10)||0));rec.id='J-'+String(n).padStart(4,'0');jobs.push(rec)}
     sv('jobs',jobs);toast('Job saved');back()},
   deljob(){const id=S.form.id;jobs=jobs.filter(j=>j.id!==id);cart=cart.filter(x=>x!==id);favJ=favJ.filter(x=>x!==id);sv('jobs',jobs);sv('cart',cart);sv('favJ',favJ);toast('Job deleted');back()},
@@ -745,7 +746,7 @@ if(API){
   A.savejob=function(){const f=S.form,d=f.d;
     if(!d.name.trim()){toast('Enter a job name');return}if(d.min===''||isNaN(+d.min)){toast('Enter the minimum labor hours');return}
     if(f.id&&!S.confirmSave){S.confirmSave=true;render(scr());return}S.confirmSave=false;
-    const rec={name:d.name.trim(),sys:d.sys,mt:d.mt,min:+d.min,max:d.max===''||d.max==null||isNaN(+d.max)?'':+d.max,plus:!!d.plus,notes:d.notes.trim(),parts:d.parts.map(x=>x.trim()).filter(Boolean),sup:d.sup.map(x=>x.trim()).filter(Boolean),rem:d.rem.trim(),big:!!d.big};
+    const rec={name:d.name.trim(),sys:d.sys,mt:d.mt,min:+d.min,max:d.max===''||d.max==null||isNaN(+d.max)?'':+d.max,plus:!!d.plus,notes:d.notes.trim(),parts:d.parts.map(x=>x.trim()).filter(Boolean),sup:d.sup.map(x=>x.trim()).filter(Boolean),rem:d.rem.trim(),big:!!d.big,road:!!d.road};
     if(f.id)rec.id=f.id;
     remote('saveJob',{job:rec},'Job saved',()=>back());
   };

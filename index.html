@@ -4,7 +4,7 @@
 <title>Repair Labor Guide</title>
 <meta name="theme-color" content="#1f3864">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Labor Guide">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -781,13 +781,15 @@ if(API){
 }
 if(role&&installEligible())S.install=true;
 /* iPhone home-screen apps can report a viewport shorter than the screen; blend the leftover strip into the bottom bar */
+const satProbe=document.createElement('div');satProbe.style.cssText='position:fixed;left:0;top:0;width:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';document.body.appendChild(satProbe);
 function fitScreen(){
   const ih=window.innerHeight,land=innerWidth>ih,sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
   const sa=(navigator.standalone===true)||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
-  const gap=sa&&sh-ih>=20&&sh-ih<=100;
+  const sat=satProbe.offsetHeight;
+  const gap=sa&&sat>0&&sh-ih>=20&&sh-ih<=100;
   document.documentElement.classList.toggle('gap',gap);
   syncBg();
-  return {ih,sh,sa,gap};
+  return {ih,sh,sa,gap,sat};
 }
 function syncBg(){
   const h=document.documentElement.style;
@@ -796,7 +798,7 @@ function syncBg(){
 function fitSoon(){fitScreen();setTimeout(fitScreen,300);setTimeout(fitScreen,1200)}
 let rz;addEventListener('resize',()=>{fitScreen();clearTimeout(rz);rz=setTimeout(()=>{if(isDesk()!==/\bdesk\b/.test($('#app').className))render(0)},120)});
 addEventListener('orientationchange',fitSoon);addEventListener('pageshow',fitSoon);
-let dbgN=0,dbgT=0;document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.copy')){if(Date.now()-dbgT>2500)dbgN=0;dbgT=Date.now();if(++dbgN>=5){dbgN=0;const r=fitScreen();toast('inner '+r.ih+' · screen '+r.sh+' · app '+(r.sa?'yes':'no')+' · gap '+(r.gap?'yes':'no'))}}});
+let dbgN=0,dbgT=0;document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.copy')){if(Date.now()-dbgT>2500)dbgN=0;dbgT=Date.now();if(++dbgN>=5){dbgN=0;const r=fitScreen();toast('inner '+r.ih+' · screen '+r.sh+' · app '+(r.sa?'yes':'no')+' · top '+r.sat+' · gap '+(r.gap?'yes':'no'))}}});
 const _render=render;render=function(y){_render(y);syncBg()};
 ['gesturestart','gesturechange','gestureend'].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault(),{passive:false}));
 fitSoon();
